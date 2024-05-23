@@ -1,0 +1,7 @@
+///ATENÇÃO!!///
+
+Antes de executar este site, lembre-se: 
+1 = iniciar servidor local SQL pelo xampp e iniciar o banco de dados
+2 - Subir o banco de dados my sql utilizando o script pré montado nos arquivos do site
+4 - Subir o servidor nodeJs
+5 - O propósito deste projeto é academico não sendo recomendado para uso em ambiente de produção

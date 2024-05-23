@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizar Consultas</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="title1">
+        <h1>Consultas Agendadas</h1>
+    </div>
+    <ul id="consultasList"></ul>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="title">Editar Consulta</h2>
+            <form id="editForm">
+                <label for="medico">Médico:</label>
+                <select id="medico" name="medico_id"></select><br>
+
+                <label for="dia">Dia:</label>
+                <select id="dia" name="dia_id"></select><br>
+
+                <label for="horario">Horário:</label>
+                <select id="horario" name="horario_id"></select><br>
+
+                <label for="clinica">Clínica:</label>
+                <select id="clinica" name="clinica_id"></select><br>
+
+                <input type="hidden" id="consultaId" name="consulta_id">
+                <button type="submit">Salvar Alterações</button>
+            </form>
+        </div>
+    </div>
+</body>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const pacienteId = urlParams.get('paciente_id');
+
+        fetch(`/consultas?paciente_id=${pacienteId}`)
+            .then(response => response.json())
+            .then(data => {
+                const consultasList = document.getElementById('consultasList');
+                data.forEach(consulta => {
+                    const dataConsulta = new Date(consulta.dia);
+                    const dia = String(dataConsulta.getUTCDate()).padStart(2, '0');
+                    const mes = String(dataConsulta.getUTCMonth() + 1).padStart(2, '0');
+                    const ano = dataConsulta.getUTCFullYear();
+                    const dataFormatada = `${dia}/${mes}/${ano}`;
+                    const horario = consulta.horario.slice(0, 5); // Extrai "HH:MM" do horário
+
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div>
+                            <strong>Paciente:</strong> ${consulta.paciente} <br>
+                            <strong>Médico:</strong> ${consulta.medico} <br>
+                            <strong>Data:</strong> ${dataFormatada} <br>
+                            <strong>Horário:</strong> ${horario} <br>
+                            <strong>Clínica:</strong> ${consulta.clinica} <br>
+                            <button class="editButton" data-id="${consulta.id}">Editar</button>
+                            <button class="deleteButton" data-id="${consulta.id}">Excluir</button>
+                        </div>
+                    `;
+                    consultasList.appendChild(li);
+                });
+
+                // Adicionar event listeners aos botões de editar
+                document.querySelectorAll('.editButton').forEach(button => {
+                    button.addEventListener('click', function () {
+                        const consultaId = this.getAttribute('data-id');
+                        openEditModal(consultaId);
+                    });
+                });
+
+                // Adicionar event listeners aos botões de excluir
+                document.querySelectorAll('.deleteButton').forEach(button => {
+                    button.addEventListener('click', function () {
+                        const consultaId = this.getAttribute('data-id');
+                        if (confirm("Tem certeza que deseja excluir esta consulta?")) {
+                            deleteConsulta(consultaId);
+                        }
+                    });
+                });
+            })
+            .catch(error => {
+                alert('Erro ao carregar consultas: ' + error.message);
+            });
+
+        // Função para abrir o modal de edição
+        function openEditModal(consultaId) {
+            fetch(`/consultas/${consultaId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Preencher o modal com os dados da consulta
+                    document.getElementById('medico').value = data.medico_id;
+                    document.getElementById('dia').value = data.dia_id;
+                    document.getElementById('horario').value = data.horario_id;
+                    document.getElementById('clinica').value = data.clinica_id;
+                    document.getElementById('consultaId').value = data.id;
+                    document.getElementById('editModal').style.display = 'block';
+                })
+                .catch(error => {
+                    alert('Erro ao carregar consulta: ' + error.message);
+                });
+        }
+
+        // Função para excluir consulta
+        function deleteConsulta(consultaId) {
+            fetch(`/consultas/${consultaId}`, {
+                method: 'DELETE',
+            })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Consulta excluída com sucesso!');
+                        location.reload(); // Recarregar a página para refletir a exclusão
+                    } else {
+                        throw new Error('Erro ao excluir consulta');
+                    }
+                })
+                .catch(error => {
+                    alert('Erro ao excluir consulta: ' + error.message);
+                });
+        }
+
+        // Fechar o modal ao clicar no botão de fechar
+        document.querySelector('.close').addEventListener('click', function () {
+            document.getElementById('editModal').style.display = 'none';
+        });
+
+        // Atualizar a consulta ao enviar o formulário
+        document.getElementById('editForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const consultaId = document.getElementById('consultaId').value;
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            fetch(`/consultas/${consultaId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('Consulta atualizada com sucesso!');
+                        location.reload(); // Recarregar a página para mostrar a consulta atualizada
+                    } else {
+                        alert('Erro ao atualizar consulta: ' + result.error);
+                    }
+                })
+                .catch(error => {
+                    alert('Erro ao atualizar consulta: ' + error.message);
+                });
+        });
+
+        // Função para carregar os dados do formulário
+        function loadFormData() {
+            fetch('/medicos')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('medico');
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.id;
+                        option.textContent = item.nome;
+                        select.appendChild(option);
+                    });
+                });
+
+            fetch('/dias')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('dia');
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.id;
+                        option.textContent = formatDateBR(item.dia);
+                        select.appendChild(option);
+                    });
+                });
+
+            fetch('/horarios')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('horario');
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.id;
+                        option.textContent = item.horario.slice(0, 5);
+                        select.appendChild(option);
+                    });
+                });
+
+            fetch('/clinicas')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('clinica');
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.id;
+                        option.textContent = item.nome;
+                        select.appendChild(option);
+                    });
+                });
+        }
+
+        // Carregar os dados do formulário ao carregar a página
+        loadFormData();
+    });
+
+    function formatDateBR(dateString) {
+        const date = new Date(dateString);
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        return `${day}/${month}/${year}`;
+    }
+</script>
+</html>

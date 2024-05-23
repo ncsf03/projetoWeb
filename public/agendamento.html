@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Agendamento de Consulta</title>
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+        <div id="agendaForm">
+            <div id="title">
+                <h1>Agendamento de Consulta</h1>
+            </div>
+            <form id="agendamentoForm">
+                <div class="container">
+                    <label for="medicoId">Médico:</label>
+                    <select id="medicoId" name="medico_id" required></select><br>
+                </div>
+                <div class="container">
+                    <label for="diaId">Dia:</label>
+                    <select id="diaId" name="dia_id" required></select><br>
+                </div>
+                <div class="container">
+                    <label for="horarioId">Horário:</label>
+                    <select id="horarioId" name="horario_id" required></select><br>
+                </div>
+                <div class="container">
+                    <label for="clinicaId">Clínica:</label>
+                    <select id="clinicaId" name="clinica_id" required></select><br>
+                </div>
+                <div class="container">
+                    <button type="submit" id="botaoEnvia" class="botao">Agendar</button>
+                </div>
+                <input type="hidden" id="pacienteId" name="paciente_id" required>
+            </form>
+            <button onclick="mudarPagina()" id="btVizualiza" class="botao">Visualizar Consultas</button>
+        </div>
+    </body>
+    <script>
+        function mudarPagina(){
+            window.location.href = "consultas.html";
+        }
+
+        function formatDateBR(dateString) {
+            const date = new Date(dateString);
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const year = date.getUTCFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        function formatTimeBR(timeString) {
+            return timeString.slice(0, 5);
+        }
+
+        function loadSelect(url, selectId, formatOption) {
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById(selectId);
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.id;
+                        if (selectId === 'diaId') {
+                            option.textContent = formatDateBR(item.dia);
+                        } else if (selectId === 'horarioId') {
+                            option.textContent = formatTimeBR(item.horario);
+                        } else {
+                            option.textContent = formatOption(item);
+                        }
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Erro ao carregar dados:', error));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const pacienteId = new URLSearchParams(window.location.search).get('paciente_id');
+            document.getElementById('pacienteId').value = pacienteId;
+
+            loadSelect('/medicos', 'medicoId', item => item.nome);
+            loadSelect('/dias', 'diaId', item => item.dia);
+            loadSelect('/horarios', 'horarioId', item => item.horario);
+            loadSelect('/clinicas', 'clinicaId', item => `${item.nome} - ${item.rua}, ${item.numero}, ${item.bairro}`);
+        });
+
+        document.getElementById('agendamentoForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            fetch('/marcar-consulta', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Consulta marcada com sucesso!');
+                } else {
+                    alert('Erro ao marcar consulta: ' + result.error);
+                }
+            })
+            .catch(error => console.error('Erro ao marcar consulta:', error));
+        });
+    </script>
+</html>

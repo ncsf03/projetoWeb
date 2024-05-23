@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <p>
+        Paciente 1 15/03/1985
+        paciente 2 22/07/1990
+    </p>
+    <div id="formLogin">
+        <div id="title">
+            <h1>Login</h1>
+        </div>
+        <!--Formulário de login conectando o html ao banco-->
+        <form id="loginForm">
+            <input type="number" id="id" name="id" class="int" class="int" placeholder="Insira seu ID de paciente..." required><br>
+            <input type="date" id="dataNascimento" name="data_nascimento" class="int" required><br>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+</body>
+<script>
+    document.getElementById('loginForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('Login bem-sucedido!');
+                window.location.href = `/agendamento.html?paciente_id=${result.paciente.id}`;
+            } else {
+                alert('Erro ao fazer login: ' + result.error);
+            }
+        })
+        .catch(error => console.error('Erro ao fazer login:', error));
+    });
+</script>
+</html>
